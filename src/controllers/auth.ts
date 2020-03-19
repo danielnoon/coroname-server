@@ -6,9 +6,16 @@ import bcrypt from 'bcrypt';
 import { generateToken, decodeToken } from '../auth-util';
 import validate from '../validate';
 
+const HASH_ROUNDS = 10;
+
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
+  if (!validate(req.body, ["username:string!", "password:string"])) {
+    res.status(422).send(error("Missing or invalid parameters."));
+    return;
+  }
+
   const u = req.body as IUser;
   
   const user = await User.findOne({ username: u.username });
@@ -24,11 +31,16 @@ router.post('/login', async (req, res) => {
   }
 
   if (await bcrypt.compare(u.password, user.password)) {
-    res.send(response(0, generateToken(user)));
+    res.send(response(0, { token: generateToken(user) }));
   }
 });
 
 router.post('/new-account', async (req, res) => {
+  if (!validate(req.body, ['username:string!', 'password:string!'])) {
+    res.status(422).send(error("Missing or invalid parameters."));
+    return;
+  }
+  
   const t = req.header('auth-token');
 
   if (!t) {
@@ -46,21 +58,57 @@ router.post('/new-account', async (req, res) => {
   const username = req.body.username as string;
   const admin = req.body.admin as boolean;
 
-  const newUser = new User({
-    username,
-    admin
-  });
+  const results = await User.findOne({ username });
 
-  await newUser.save();
+  if (results != null) {
+    res.status(409).send(error("User with provided username already exists."));
+    return;
+  }
 
-  res.send(response(0, {}));
+  try {
+    const newUser = new User({
+      username,
+      admin
+    });
+
+    await newUser.save();
+
+    res.send(response(0, {}));
+  } catch (err) {
+    res.status(500).send(error(err.message))
+  }
 });
 
+router.post('/activate', async (req, res) => {
+  
+
+  const username = req.body.username as string;
+  const password = req.body.password as string;
+
+  const user = await User.findOne({ username });
+
+  if (user === null) {
+    res.status(404).send(error("Could not find user with provided username."));
+    return;
+  }
+
+  if (user.password) {
+    res.status(403).send(error("User has already been activated."));
+    return;
+  }
+
+  user.password = await bcrypt.hash(password, HASH_ROUNDS);
+
+  await user.save();
+
+  res.send(response(0, { token: generateToken(user) }));
+})
+
 router.post('/init', async (req, res) => {
-  const searchResults = await User.find();
+  const searchResults = await User.find({ admin: true });
 
   if (searchResults.length > 0) {
-    res.status(403).send(error("Administrator already exists. Create new administrators using that account."));
+    res.status(403).send(error("Administrator already exists. Create new administrators using another administrator account."));
     return;
   }
 
@@ -70,7 +118,7 @@ router.post('/init', async (req, res) => {
   }
 
   const username = req.body.username as string;
-  const password = await bcrypt.hash(req.body.password, 10);
+  const password = await bcrypt.hash(req.body.password, HASH_ROUNDS);
   const admin = true;
 
   const user = new User({ username, password, admin });

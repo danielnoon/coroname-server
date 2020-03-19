@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import auth from './controllers/auth';
+import anime from './controllers/anime';
 import cors from 'cors';
 import bp from 'body-parser';
 
@@ -18,5 +19,6 @@ app.get('/', (req, res) => {
 });
 
 app.use('/auth', auth);
+app.use('/anime', anime);
 
 app.listen(process.env.PORT || 3000, () => console.log("Listening!"));
