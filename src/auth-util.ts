@@ -15,6 +15,6 @@ export function generateToken(user: IUser) {
 }
 
 export function decodeToken(t: string): Promise<IUser> {
-  const token = jwt.verify(t, TEST_SECRET) as Token;
+  const token = jwt.verify(t, process.env.JWT_SECRET || TEST_SECRET) as Token;
   return User.findOne({ username: token.sub }).then();
 }
