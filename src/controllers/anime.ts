@@ -1,8 +1,8 @@
 import express from 'express';
 import { response } from '../models/response';
 import Kitsu from 'kitsu';
-import { kitsuToCoroname, kitsuArrayToCoroname, AnimeModel, animeModelAsAnime } from '../models/anime';
-import { decodeToken } from '../auth-util';
+import { kitsuToCoroname, kitsuArrayToCoroname, AnimeModel, animeModelAsAnime, Anime } from '../models/anime';
+import { decodeToken, generateToken } from '../auth-util';
 import { error } from '../models/error';
 import validate from '../validate';
 import { IUser } from '../models/user';
@@ -39,7 +39,7 @@ router.get('/search', async (req, res) => {
   res.send(response(0, anime));
 });
 
-router.put('/continuing-series', async (req, res) => {
+router.post('/continuing-series', async (req, res) => {
   if (!validate(req.body, ['id:number!'])) {
     res.status(422).send(error("An anime id is required."));
     return;
@@ -131,7 +131,6 @@ router.post('/vote', async (req, res) => {
     res.status(403).send(error("No votes remaining."));
     return;
   }
-
   
   const kitsuId = req.body.id as number;
   
@@ -165,6 +164,43 @@ router.post('/vote', async (req, res) => {
   await user.save();
 
   res.send(response(0, 'success'));
+});
+
+router.get('/current', async (req, res) => {
+  const token = req.header('auth-token');
+
+  if (!token) {
+    res.status(401).send(error("Token missing."));
+    return;
+  }
+
+  let user: IUser;
+
+  try {
+    user = await decodeToken(token);
+
+    if (!user) {
+      res.status(403).send(error("User does not exist."));
+      return;
+    }
+  } catch {
+    res.status(403).send(error("Token could not be verified."));
+    return;
+  }
+
+  const all: Anime[] = [];
+
+  const continuingSeries = await AnimeModel.findOne({ continuingSeries: true });
+
+  if (continuingSeries) {
+    all.push(animeModelAsAnime(continuingSeries));
+  }
+
+  const rest = await AnimeModel.find({ continuingSeries: false }).sort({ votes: -1 });
+
+  rest.forEach(anime => all.push(animeModelAsAnime(anime)));
+
+  res.send(response(0, all));
 });
 
 export default router;

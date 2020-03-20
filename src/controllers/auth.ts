@@ -111,4 +111,31 @@ router.post('/init', async (req, res) => {
   res.send(response(0, { token: generateToken(user) }));
 });
 
+
+
+router.get('/new-token', async (req, res) => {
+  const token = req.header('auth-token');
+
+  if (!token) {
+    res.status(401).send(error("Token missing."));
+    return;
+  }
+
+  let user: IUser;
+
+  try {
+    user = await decodeToken(token);
+
+    if (!user) {
+      res.status(403).send(error("User does not exist."));
+      return;
+    }
+  } catch {
+    res.status(403).send(error("Token could not be verified."));
+    return;
+  }
+
+  res.send(response(0, { token: generateToken(user) }));
+});
+
 export default router;
