@@ -8,6 +8,8 @@ export function generateToken(user: IUser) {
   const token: Token = { 
     sub: user.username,
     admin: user.admin,
+    votesAvailable: user.votesAvailable,
+    votedFor: user.votedFor,
     iat: Date.now()
   };
 

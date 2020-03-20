@@ -74,7 +74,9 @@ router.post('/new-account', async (req, res) => {
   try {
     const newUser = new User({
       username,
-      admin
+      admin,
+      votesAvailable: 3,
+      votedFor: []
     });
 
     await newUser.save();
@@ -102,7 +104,7 @@ router.post('/init', async (req, res) => {
   const password = await bcrypt.hash(req.body.password, HASH_ROUNDS);
   const admin = true;
 
-  const user = new User({ username, password, admin });
+  const user = new User({ username, password, admin, votesAvailable: 3, votedFor: [] });
 
   await user.save();
 
