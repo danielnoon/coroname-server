@@ -11,7 +11,7 @@ const HASH_ROUNDS = 10;
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
-  if (!validate(req.body, ["username:string!", "password:string"])) {
+  if (!validate(req.body, ["username:string!", "password:string!"])) {
     res.status(422).send(error("Missing or invalid parameters."));
     return;
   }
@@ -26,17 +26,23 @@ router.post('/login', async (req, res) => {
   }
 
   if (!user.password) {
-    res.send(response(1, {}));
+    user.password = await bcrypt.hash(u.password, HASH_ROUNDS);
+
+    await user.save();
+
+    res.send(response(0, { token: generateToken(user) }));
     return;
   }
 
   if (await bcrypt.compare(u.password, user.password)) {
     res.send(response(0, { token: generateToken(user) }));
+  } else {
+    res.status(400).send(error("Password is incorrect."));
   }
 });
 
 router.post('/new-account', async (req, res) => {
-  if (!validate(req.body, ['username:string!', 'password:string!'])) {
+  if (!validate(req.body, ['username:string!', 'admin:boolean!'])) {
     res.status(422).send(error("Missing or invalid parameters."));
     return;
   }
@@ -78,31 +84,6 @@ router.post('/new-account', async (req, res) => {
     res.status(500).send(error(err.message))
   }
 });
-
-router.post('/activate', async (req, res) => {
-  
-
-  const username = req.body.username as string;
-  const password = req.body.password as string;
-
-  const user = await User.findOne({ username });
-
-  if (user === null) {
-    res.status(404).send(error("Could not find user with provided username."));
-    return;
-  }
-
-  if (user.password) {
-    res.status(403).send(error("User has already been activated."));
-    return;
-  }
-
-  user.password = await bcrypt.hash(password, HASH_ROUNDS);
-
-  await user.save();
-
-  res.send(response(0, { token: generateToken(user) }));
-})
 
 router.post('/init', async (req, res) => {
   const searchResults = await User.find({ admin: true });
