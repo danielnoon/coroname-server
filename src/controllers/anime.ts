@@ -166,6 +166,59 @@ router.post('/vote', async (req, res) => {
   res.send(response(0, 'success'));
 });
 
+router.post('/rescind', async (req, res) => {
+  if (!validate(req.body, ['id:number!'])) {
+    res.status(422).send(error('Anime id missing.'));
+    return;
+  }
+  
+  const token = req.header('auth-token');
+
+  if (!token) {
+    res.status(401).send(error("Token missing."));
+    return;
+  }
+
+  let user: IUser;
+
+  try {
+    user = await decodeToken(token);
+
+    if (!user) {
+      res.status(403).send(error("User does not exist."));
+      return;
+    }
+  } catch {
+    res.status(403).send(error("Token could not be verified."));
+    return;
+  }
+
+  const kitsuId = req.body.id as number;
+  
+  if (!user.votedFor.includes(kitsuId)) {
+    res.status(403).send(error("You have not voted for this anime!"));
+    return;
+  }
+
+  let anime = await AnimeModel.findOne({ kitsuId });
+
+  if (!anime) {
+    res.status(418).send(error("What the fuck??"));
+    return;
+  }
+
+  anime.votes--;
+
+  await anime.save();
+
+  user.votesAvailable++;
+  user.votedFor.splice(user.votedFor.indexOf(kitsuId));
+
+  await user.save();
+
+  res.send(response(0, 'success'));
+});
+
 router.get('/current', async (req, res) => {
   const token = req.header('auth-token');
 
