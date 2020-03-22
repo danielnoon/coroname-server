@@ -8,7 +8,7 @@ import bp from 'body-parser';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({methods: ['POST', 'GET', 'OPTIONS', 'DELETE', 'PUT', 'PATCH']}));
 app.use(bp.json());
 
 mongoose.connect(process.env.DB_URI || 'mongodb://localhost:27017/coroname', {

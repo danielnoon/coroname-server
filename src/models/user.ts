@@ -17,3 +17,16 @@ const UserSchema = new Schema({
 });
 
 export const User = mongoose.model<IUser>('User', UserSchema);
+
+export function trimUser(user: IUser) {
+  return {
+    username: user.username,
+    admin: user.admin,
+    votesAvailable: user.votesAvailable,
+    votedFor: user.votedFor
+  };
+}
+
+export function trimUsers(users: IUser[]) {
+  return users.map(u => trimUser(u));
+}
