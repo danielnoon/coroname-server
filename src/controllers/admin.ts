@@ -1,39 +1,21 @@
 import express from 'express';
 import { error } from '../models/error';
-import { decodeToken, generateToken } from '../auth-util';
+import { decodeToken, generateToken, getUser } from '../auth-util';
 import { User, IUser, trimUsers, trimUser } from '../models/user';
 import { response } from '../models/response';
 import { AnimeModel } from '../models/anime';
 import bcrypt from 'bcrypt';
 import validate from '../validate';
 import { HASH_ROUNDS } from '../constants';
+import t from '../thunk';
+import { HttpError } from '../http-error';
 
 const router = express.Router();
 
-router.post('/reset-votes', async (req, res) => {
-  try {
-    const token = req.header('auth-token');
+router.post('/reset-votes', t(async (req, res) => {
+  const token = req.header('auth-token');
 
-    if (!token) {
-      res.status(401).send(error("Token missing."));
-      return;
-    }
-
-    const user = await decodeToken(token);
-
-    if (!user) {
-      res.status(401).send(error("User does not exist."));
-      return;
-    }
-
-    if (!user.admin) {
-      res.status(403).send(error("User is not administrator."));
-      return;
-    }
-  } catch {
-    res.status(401).send(error("Token could not be verified."));
-    return;
-  }
+  const admin = await getUser(token, true);
 
   const users = await User.find();
 
@@ -46,7 +28,7 @@ router.post('/reset-votes', async (req, res) => {
   await AnimeModel.deleteMany({ continuingSeries: false });
 
   res.send(response(0, 'success'));
-})
+}));
 
 router.post('/init', async (req, res) => {
   const searchResults = await User.find({ admin: true });
@@ -72,35 +54,12 @@ router.post('/init', async (req, res) => {
   res.send(response(0, { token: generateToken(user) }));
 });
 
-router.post('/new-user', async (req, res) => {
-  if (!validate(req.body, ['username:string!', 'admin:boolean!'])) {
-    res.status(422).send(error("Missing or invalid parameters."));
-    return;
-  }
+router.post('/new-user', t(async (req, res) => {
+  validate(req.body, ['username:string!', 'admin:boolean!']);
   
-  try {
-    const token = req.header('auth-token');
+  const token = req.header('auth-token');
 
-    if (!token) {
-      res.status(401).send(error("Token missing."));
-      return;
-    }
-
-    const user = await decodeToken(token);
-
-    if (!user) {
-      res.status(401).send(error("User does not exist."));
-      return;
-    }
-
-    if (!user.admin) {
-      res.status(403).send(error("User is not administrator."));
-      return;
-    }
-  } catch {
-    res.status(401).send(error("Token could not be verified."));
-    return;
-  }
+  const user = await getUser(token, true);
 
   const username = req.body.username as string;
   const admin = req.body.admin as boolean;
@@ -108,8 +67,7 @@ router.post('/new-user', async (req, res) => {
   const results = await User.findOne({ username });
 
   if (results != null) {
-    res.status(409).send(error("User with provided username already exists."));
-    return;
+    throw new HttpError(409, "User with provided username already exists.");
   }
 
   try {
@@ -124,74 +82,31 @@ router.post('/new-user', async (req, res) => {
 
     res.send(response(0, trimUser(newUser)));
   } catch (err) {
-    res.status(500).send(error(err.message));
+    throw new HttpError(500, err.message);
   }
-});
+}));
 
-router.get('/users', async (req, res) => {
-  let user: IUser;
+router.get('/users', t(async (req, res) => {
+  const token = req.header('auth-token');
 
-  try {
-    const token = req.header('auth-token');
-
-    if (!token) {
-      res.status(401).send(error("Token missing."));
-      return;
-    }
-
-    user = await decodeToken(token);
-
-    if (!user) {
-      res.status(401).send(error("User does not exist."));
-      return;
-    }
-
-    if (!user.admin) {
-      res.status(403).send(error("User is not administrator."));
-      return;
-    }
-  } catch {
-    res.status(401).send(error("Token could not be verified."));
-    return;
-  }
+  const user = await getUser(token, true);
 
   const users = await User.find({ username: { $not: { $eq: user.username } } });
 
   res.send(response(0, trimUsers(users)));
-});
+}));
 
-router.put('/user/:username', async (req, res) => {
-  try {
-    const token = req.header('auth-token');
+router.put('/user/:username', t(async (req, res) => {
+  const token = req.header('auth-token');
 
-    if (!token) {
-      res.status(401).send(error("Token missing."));
-      return;
-    }
-
-    const user = await decodeToken(token);
-
-    if (!user) {
-      res.status(401).send(error("User does not exist."));
-      return;
-    }
-
-    if (!user.admin) {
-      res.status(403).send(error("User is not administrator."));
-      return;
-    }
-  } catch {
-    res.status(401).send(error("Token could not be verified."));
-    return;
-  }
+  await getUser(token, true);
 
   const currentUsername = req.params.username;
 
   const user = await User.findOne({ username: currentUsername });
 
   if (!user) {
-    res.status(404).send(error("User not found."));
-    return;
+    throw new HttpError(404, "User not found.");
   }
 
   const newUsername = req.body.username as string;
@@ -200,8 +115,7 @@ router.put('/user/:username', async (req, res) => {
     const existingUser = await User.findOne({ username: newUsername });
 
     if (existingUser) {
-      res.status(409).send(error("User with provided username already exists."));
-      return;
+      throw new HttpError(409, "User with provided username already exists.");
     }
 
     if (newUsername) {
@@ -220,36 +134,14 @@ router.put('/user/:username', async (req, res) => {
   await user.save();
 
   res.send(response(0, 'success'));
-});
+}));
 
-router.delete('/user/:username', async (req, res) => {
-  if (!req.params.username) {
-    res.status(422).send(error("Missing username parameter."));
-  }
+router.delete('/user/:username', t(async (req, res) => {
+  validate(req.params, ['username:string!']);
 
-  try {
-    const token = req.header('auth-token');
+  const token = req.header('auth-token');
 
-    if (!token) {
-      res.status(401).send(error("Token missing."));
-      return;
-    }
-
-    const user = await decodeToken(token);
-
-    if (!user) {
-      res.status(401).send(error("User does not exist."));
-      return;
-    }
-
-    if (!user.admin) {
-      res.status(403).send(error("User is not administrator."));
-      return;
-    }
-  } catch {
-    res.status(401).send(error("Token could not be verified."));
-    return;
-  }
+  const admin = await getUser(token, true);
 
   const status = await User.deleteOne({ username: req.params.username });
 
@@ -262,7 +154,7 @@ router.delete('/user/:username', async (req, res) => {
     }
   }
 
-  res.status(500).send(error('guh'));
-})
+  throw new HttpError(500, 'Unable to delete user.');
+}));
 
 export default router;

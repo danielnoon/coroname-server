@@ -1,10 +1,12 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import auth from './controllers/auth';
 import anime from './controllers/anime';
 import admin from './controllers/admin';
 import cors from 'cors';
 import bp from 'body-parser';
+import { HttpError } from './http-error';
+import { error } from './models/error';
 
 const app = express();
 
@@ -22,5 +24,10 @@ app.get('/', (req, res) => {
 app.use('/auth', auth);
 app.use('/anime', anime);
 app.use('/admin', admin);
+
+app.use((err: HttpError, req: Request<any>, res: Response<any>, next: () => void) => {
+  res.status(err.code).send(error(err.message));
+  next();
+});
 
 app.listen(process.env.PORT || 3000, () => console.log("Listening!"));

@@ -1,9 +1,11 @@
+import { HttpError } from "./http-error";
+
 export default function validate(body: any, validators: string[]) {
   for (const validator of validators) {
     if (typeof validator === 'string') {
       const [field, type] = validator.split(':');
       if (!validateType(body[field], type)) {
-        return false;
+        throw new HttpError(422, `Invalid value for field ${field}.`);
       }
     }
   }
@@ -21,6 +23,9 @@ function validateType(value: any, type: string): boolean {
     } else return typeof value === type;
   }
   else {
+    if (type === 'number' && typeof value === 'string') {
+      if (!isNaN(parseFloat(value))) return true;
+    }
     return typeof value === type;
   }
 }
