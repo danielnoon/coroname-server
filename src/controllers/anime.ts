@@ -2,10 +2,9 @@ import express from 'express';
 import { response } from '../models/response';
 import Kitsu from 'kitsu';
 import { kitsuToCoroname, kitsuArrayToCoroname, AnimeModel, animeModelAsAnime, Anime } from '../models/anime';
-import { decodeToken, generateToken, getUser } from '../auth-util';
-import { error } from '../models/error';
+import { getUser } from '../auth-util';
 import validate from '../validate';
-import { IUser, User, trimUser, trimUsers } from '../models/user';
+import { User, trimUsers } from '../models/user';
 import { HttpError } from '../http-error';
 import t from '../thunk';
 

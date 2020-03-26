@@ -128,8 +128,15 @@ router.put('/user/:username', t(async (req, res) => {
     user.password = "";
   }
 
+  const votes = req.body.votes as number;
+  if (typeof votes === 'number') {
+    user.votesAvailable = votes;
+  }
+
   const admin = req.body.admin as boolean;
-  user.admin = admin;
+  if (typeof admin === 'boolean') {
+    user.admin = admin;
+  }
 
   await user.save();
 
