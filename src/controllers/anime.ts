@@ -132,7 +132,7 @@ router.post('/rescind', t(async (req, res) => {
   await anime.save();
 
   user.votesAvailable++;
-  user.votedFor.splice(user.votedFor.indexOf(kitsuId));
+  user.votedFor.splice(user.votedFor.indexOf(kitsuId), 1);
 
   await user.save();
 
