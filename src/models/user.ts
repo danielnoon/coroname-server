@@ -6,6 +6,7 @@ export interface IUser extends Document {
   admin: boolean;
   votesAvailable: number;
   votedFor: number[];
+  email: string;
 }
 
 const UserSchema = new Schema({
@@ -13,7 +14,8 @@ const UserSchema = new Schema({
   password: String,
   admin: Boolean,
   votesAvailable: Number,
-  votedFor: [Number]
+  votedFor: [Number],
+  email: String
 });
 
 export const User = mongoose.model<IUser>('User', UserSchema);
@@ -23,7 +25,8 @@ export function trimUser(user: IUser) {
     username: user.username,
     admin: user.admin,
     votesAvailable: user.votesAvailable,
-    votedFor: user.votedFor
+    votedFor: user.votedFor,
+    email: user.email
   };
 }
 

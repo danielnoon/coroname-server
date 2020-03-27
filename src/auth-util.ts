@@ -7,7 +7,8 @@ const TEST_SECRET = 'g4bno9ui2';
 
 export function generateToken(user: IUser) {
   const token: Token = { 
-    sub: user.username,
+    sub: user._id,
+    username: user.username,
     admin: user.admin,
     votesAvailable: user.votesAvailable,
     votedFor: user.votedFor,
@@ -20,7 +21,7 @@ export function generateToken(user: IUser) {
 export async function decodeToken(t: string) {
   try {
     const token = jwt.verify(t, process.env.JWT_SECRET || TEST_SECRET) as Token;
-    return await User.findOne({ username: token.sub });
+    return await User.findById(token.sub);
   } catch (err) {
     throw new HttpError(401, "Invalid token.");
   }

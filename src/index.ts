@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import auth from './controllers/auth';
 import anime from './controllers/anime';
 import admin from './controllers/admin';
+import users from './controllers/users';
 import cors from 'cors';
 import bp from 'body-parser';
 import { HttpError } from './http-error';
@@ -24,6 +25,7 @@ app.get('/', (req, res) => {
 app.use('/auth', auth);
 app.use('/anime', anime);
 app.use('/admin', admin);
+app.use('/users', users);
 
 app.use((err: HttpError, req: Request<any>, res: Response<any>, next: () => void) => {
   res.status(err.code).send(error(err.message));

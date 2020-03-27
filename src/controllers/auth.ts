@@ -1,9 +1,8 @@
 import express from 'express';
 import { User, IUser } from '../models/user';
-import { error } from '../models/error';
 import { response } from '../models/response';
 import bcrypt from 'bcrypt';
-import { generateToken, decodeToken, getUser } from '../auth-util';
+import { generateToken, getUser } from '../auth-util';
 import validate from '../validate';
 import { HASH_ROUNDS } from '../constants';
 import t from './../thunk';

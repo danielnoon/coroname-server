@@ -26,6 +26,6 @@ function validateType(value: any, type: string): boolean {
     if (type === 'number' && typeof value === 'string') {
       if (!isNaN(parseFloat(value))) return true;
     }
-    return typeof value === type;
+    return typeof value === type || value === undefined || value === null;
   }
 }
