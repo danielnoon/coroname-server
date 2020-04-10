@@ -28,7 +28,7 @@ app.use('/admin', admin);
 app.use('/users', users);
 
 app.use((err: HttpError, req: Request<any>, res: Response<any>, next: () => void) => {
-  res.status(err.code).send(error(err.message));
+  res.status(err.code || 500).send(error(err.message) || "Internal server error.");
   next();
 });
 
