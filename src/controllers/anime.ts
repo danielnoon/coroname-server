@@ -1,250 +1,180 @@
-import express from "express";
-import { response } from "../models/response";
-import Kitsu from "kitsu";
-import {
-  kitsuToCoroname,
-  kitsuArrayToCoroname,
-  AnimeModel,
-  animeModelAsAnime,
-  Anime,
-} from "../models/anime";
-import { getUser } from "../auth-util";
-import validate from "../validate";
-import { User, trimUsers } from "../models/user";
-import { HttpError } from "../http-error";
-import t from "../thunk";
+import express from 'express';
+import { response } from '../models/response';
+import Kitsu from 'kitsu';
+import { kitsuToCoroname, kitsuArrayToCoroname, AnimeModel, animeModelAsAnime, Anime } from '../models/anime';
+import { getUser } from '../auth-util';
+import validate from '../validate';
+import { User, trimUsers } from '../models/user';
+import { HttpError } from '../http-error';
+import t from '../thunk';
 
 const kitsu = new Kitsu();
 
 const router = express.Router();
 
-router.get(
-  "/search",
-  t(async (req, res) => {
-    const token = req.header("auth-token");
-    await getUser(token);
+router.get('/search', t(async (req, res) => {
+  const token = req.header('auth-token');
+  await getUser(token);
 
-    const query = req.query.q as string;
+  const query = req.query.q as string;
 
-    const { data, errors } = await kitsu.get("anime", {
-      filter: { text: query },
-    });
+  const { data, errors } = await kitsu.get('anime', {filter: { text: query }});
+
+  if (errors) {
+    throw new HttpError(errors[0].code, errors[0].title);
+  }
+
+  const anime = await kitsuArrayToCoroname(data);
+
+  res.send(response(0, anime));
+}));
+
+router.post('/continuing-series', t(async (req, res) => {
+  validate(req.body, ['id:number!']);
+
+  const token = req.header('auth-token');
+  await getUser(token, true);
+
+  const kitsuId = req.body.id as number;
+
+  let anime = await AnimeModel.findOne({ kitsuId });
+
+  if (!anime) {
+    const { data, errors } = await kitsu.get('anime/' + kitsuId);
 
     if (errors) {
       throw new HttpError(errors[0].code, errors[0].title);
     }
 
-    const anime = await kitsuArrayToCoroname(data);
+    let nAnime = await kitsuToCoroname(data);
 
-    res.send(response(0, anime));
-  })
-);
+    anime = new AnimeModel(nAnime);
+  }
 
-router.post(
-  "/continuing-series",
-  t(async (req, res) => {
-    validate(req.body, ["id:number!"]);
+  const currentCS = await AnimeModel.findOne({ continuingSeries: true });
 
-    const token = req.header("auth-token");
-    await getUser(token, true);
+  if (currentCS) {
+    currentCS.continuingSeries = false;
+    await currentCS.save();
+  }
 
-    const kitsuId = req.body.id as number;
+  anime.continuingSeries = true;
 
-    let anime = await AnimeModel.findOne({ kitsuId });
+  await anime.save();
 
-    if (!anime) {
-      const { data, errors } = await kitsu.get("anime/" + kitsuId);
+  res.send(response(0, animeModelAsAnime(anime)));
+}));
 
-      if (errors) {
-        throw new HttpError(errors[0].code, errors[0].title);
-      }
+router.post('/vote', t(async (req, res) => {
+  validate(req.body, ['id:number!']);
+  
+  const token = req.header('auth-token');
 
-      let nAnime = await kitsuToCoroname(data);
+  const user = await getUser(token);
 
-      anime = new AnimeModel(nAnime);
+  if (user.votesAvailable < 1) {
+    throw new HttpError(403, "No votes remaining.");
+  }
+  
+  const kitsuId = req.body.id as number;
+  
+  if (user.votedFor.includes(kitsuId)) {
+    throw new HttpError(403, "You've already voted for this anime!");
+  }
+
+  let anime = await AnimeModel.findOne({ kitsuId });
+
+  if (!anime) {
+    const { data, errors } = await kitsu.get('anime/' + kitsuId);
+
+    if (errors) {
+      throw new HttpError(errors[0].code, errors[0].title);
     }
 
-    const currentCS = await AnimeModel.findOne({ continuingSeries: true });
+    let nAnime = await kitsuToCoroname(data);
 
-    if (currentCS) {
-      currentCS.continuingSeries = false;
-      await currentCS.save();
-    }
+    anime = new AnimeModel(nAnime);
+  }
 
-    anime.continuingSeries = true;
+  anime.votes++;
 
-    await anime.save();
+  await anime.save();
 
-    res.send(response(0, animeModelAsAnime(anime)));
-  })
-);
+  user.votesAvailable--;
+  user.votedFor.push(kitsuId);
 
-router.post(
-  "/vote",
-  t(async (req, res) => {
-    validate(req.body, ["id:number!"]);
+  await user.save();
 
-    const token = req.header("auth-token");
+  res.send(response(0, 'success'));
+}));
 
-    const user = await getUser(token);
+router.post('/rescind', t(async (req, res) => {
+  validate(req.body, ['id:number!']);
+  
+  const token = req.header('auth-token');
 
-    if (user.votesAvailable < 1) {
-      throw new HttpError(403, "No votes remaining.");
-    }
+  const user = await getUser(token);
 
-    const kitsuId = req.body.id as number;
+  const kitsuId = req.body.id as number;
+  
+  if (!user.votedFor.includes(kitsuId)) {
+    throw new HttpError(403, "You have not voted for this anime!");
+  }
 
-    if (user.votedFor.includes(kitsuId)) {
-      throw new HttpError(403, "You've already voted for this anime!");
-    }
+  let anime = await AnimeModel.findOne({ kitsuId });
 
-    let anime = await AnimeModel.findOne({ kitsuId });
+  if (!anime) {
+    throw new HttpError(418, "What the fuck??");
+  }
 
-    if (!anime) {
-      const { data, errors } = await kitsu.get("anime/" + kitsuId);
+  anime.votes--;
 
-      if (errors) {
-        throw new HttpError(errors[0].code, errors[0].title);
-      }
+  await anime.save();
 
-      let nAnime = await kitsuToCoroname(data);
+  user.votesAvailable++;
+  user.votedFor.splice(user.votedFor.indexOf(kitsuId), 1);
 
-      anime = new AnimeModel(nAnime);
-    }
+  await user.save();
 
-    anime.votes++;
+  res.send(response(0, 'success'));
+}));
 
-    await anime.save();
+router.get('/current', t(async (req, res) => {
+  const token = req.header('auth-token');
 
-    user.votesAvailable--;
-    user.votedFor.push(kitsuId);
+  await getUser(token);
 
-    await user.save();
+  const all: Anime[] = [];
 
-    res.send(response(0, "success"));
-  })
-);
+  const continuingSeries = await AnimeModel.findOne({ continuingSeries: true });
 
-router.post(
-  "/supervote",
-  t(async (req, res) => {
-    validate(req.body, ["id:number!"]);
+  if (continuingSeries) {
+    all.push(animeModelAsAnime(continuingSeries));
+  }
 
-    const token = req.header("auth-token");
+  const rest = await AnimeModel.find({ continuingSeries: false }).sort({ votes: -1 });
 
-    const user = await getUser(token);
+  rest.forEach(anime => all.push(animeModelAsAnime(anime)));
 
-    if (!user.supervoteAvailable) {
-      throw new HttpError(403, "Supervote already used.");
-    }
+  res.send(response(0, all));
+}));
 
-    const kitsuId = req.body.id as number;
+router.get('/:showId/voters', t(async (req, res) => {
+  const token = req.header('auth-token');
 
-    let anime = await AnimeModel.findOne({ kitsuId });
+  await getUser(token);
 
-    if (!anime) {
-      const { data, errors } = await kitsu.get("anime/" + kitsuId);
+  validate(req.params, ['showId:number']);
 
-      if (errors) {
-        throw new HttpError(errors[0].code, errors[0].title);
-      }
+  const id = parseInt(req.params.showId);
 
-      let nAnime = await kitsuToCoroname(data);
+  const show = AnimeModel.findOne({ kitsuId: id });
 
-      anime = new AnimeModel(nAnime);
-    }
+  if (!show) throw new HttpError(404, "Show does not exist or has not been voted on.");
 
-    anime.supervoted = true;
-    await anime.save();
+  const voters = await User.find({ votedFor: id });
 
-    user.supervoteAvailable = false;
-    await user.save();
-
-    res.send(response(0, "success"));
-  })
-);
-
-router.post(
-  "/rescind",
-  t(async (req, res) => {
-    validate(req.body, ["id:number!"]);
-
-    const token = req.header("auth-token");
-
-    const user = await getUser(token);
-
-    const kitsuId = req.body.id as number;
-
-    if (!user.votedFor.includes(kitsuId)) {
-      throw new HttpError(403, "You have not voted for this anime!");
-    }
-
-    let anime = await AnimeModel.findOne({ kitsuId });
-
-    if (!anime) {
-      throw new HttpError(418, "What the fuck??");
-    }
-
-    anime.votes--;
-
-    await anime.save();
-
-    user.votesAvailable++;
-    user.votedFor.splice(user.votedFor.indexOf(kitsuId), 1);
-
-    await user.save();
-
-    res.send(response(0, "success"));
-  })
-);
-
-router.get(
-  "/current",
-  t(async (req, res) => {
-    const token = req.header("auth-token");
-
-    await getUser(token);
-
-    const all: Anime[] = [];
-
-    const continuingSeries = await AnimeModel.findOne({
-      continuingSeries: true,
-    });
-
-    if (continuingSeries) {
-      all.push(animeModelAsAnime(continuingSeries));
-    }
-
-    const rest = await AnimeModel.find({ continuingSeries: false }).sort({
-      votes: -1,
-    });
-
-    rest.forEach((anime) => all.push(animeModelAsAnime(anime)));
-
-    res.send(response(0, all));
-  })
-);
-
-router.get(
-  "/:showId/voters",
-  t(async (req, res) => {
-    const token = req.header("auth-token");
-
-    await getUser(token);
-
-    validate(req.params, ["showId:number"]);
-
-    const id = parseInt(req.params.showId);
-
-    const show = AnimeModel.findOne({ kitsuId: id });
-
-    if (!show)
-      throw new HttpError(404, "Show does not exist or has not been voted on.");
-
-    const voters = await User.find({ votedFor: id });
-
-    res.send(response(0, trimUsers(voters)));
-  })
-);
+  res.send(response(0, trimUsers(voters)));
+}));
 
 export default router;
