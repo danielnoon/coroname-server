@@ -30,17 +30,13 @@ router.post('/reset-votes', t(async (req, res) => {
   res.send(response(0, 'success'));
 }));
 
-router.post('/init', async (req, res) => {
+router.post('/init', t(async (req, res) => {
+  validate(req.body, ["username:string!", "password:string"])
+
   const searchResults = await User.find({ admin: true });
 
   if (searchResults.length > 0) {
-    res.status(403).send(error("Administrator already exists. Create new administrators using another administrator account."));
-    return;
-  }
-
-  if (!validate(req.body, ["username:string!", "password:string"])) {
-    res.status(422).send(error("Missing or invalid parameters."));
-    return;
+    throw new HttpError(403, "Administrator already exists. Create new administrators using another administrator account.");
   }
 
   const username = req.body.username as string;
@@ -52,14 +48,14 @@ router.post('/init', async (req, res) => {
   await user.save();
 
   res.send(response(0, { token: generateToken(user) }));
-});
+}));
 
 router.post('/new-user', t(async (req, res) => {
   validate(req.body, ['username:string!', 'admin:boolean!']);
   
   const token = req.header('auth-token');
 
-  const user = await getUser(token, true);
+  await getUser(token, true);
 
   const username = req.body.username as string;
   const admin = req.body.admin as boolean;
