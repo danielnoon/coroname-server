@@ -9,7 +9,10 @@ export class Anime {
     public nsfw: boolean,
     public continuingSeries: boolean,
     public votes: number,
-    public supervoted: boolean
+    public supervoted: boolean,
+    public thisWeek: boolean,
+    public episode: number,
+    public episodes: number
   ) {}
 }
 
@@ -29,26 +32,30 @@ export async function kitsuToCoroname(anime: any) {
   const poster = anime.posterImage?.large as string;
   const synopsis = anime.synopsis as string;
   const nsfw = anime.nsfw as boolean;
+  const episodes = anime.episodeCount as number;
 
   const existing = await AnimeModel.findOne({ kitsuId: id });
 
   if (existing) {
     return animeModelAsAnime(existing);
   } else {
-    return new Anime(id, title, poster, synopsis, nsfw, false, 0, false);
+    return new Anime(
+      id,
+      title,
+      poster,
+      synopsis,
+      nsfw,
+      false,
+      0,
+      false,
+      true,
+      0,
+      episodes
+    );
   }
 }
 
-export interface IAnime extends Document {
-  kitsuId: number;
-  title: string;
-  poster: string;
-  synopsis: string;
-  nsfw: boolean;
-  continuingSeries: boolean;
-  votes: number;
-  supervoted: boolean;
-}
+export interface IAnime extends Document, Anime {}
 
 const animeSchema = new Schema<IAnime>({
   kitsuId: { type: Number, unique: true, required: true },
@@ -59,6 +66,10 @@ const animeSchema = new Schema<IAnime>({
   continuingSeries: Boolean,
   votes: Number,
   supervoted: Boolean,
+  streamUrl: String,
+  episode: Number,
+  episodes: Number,
+  thisWeek: Boolean,
 });
 
 export const AnimeModel = mongoose.model<IAnime>("Anime", animeSchema);
@@ -72,6 +83,9 @@ export function animeModelAsAnime(anime: IAnime) {
     anime.nsfw,
     anime.continuingSeries,
     anime.votes,
-    anime.supervoted
+    anime.supervoted,
+    anime.thisWeek,
+    anime.episode,
+    anime.episodes
   );
 }

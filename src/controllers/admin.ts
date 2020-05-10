@@ -1,163 +1,202 @@
-import express from 'express';
-import { error } from '../models/error';
-import { decodeToken, generateToken, getUser } from '../auth-util';
-import { User, IUser, trimUsers, trimUser } from '../models/user';
-import { response } from '../models/response';
-import { AnimeModel } from '../models/anime';
-import bcrypt from 'bcrypt';
-import validate from '../validate';
-import { HASH_ROUNDS } from '../constants';
-import t from '../thunk';
-import { HttpError } from '../http-error';
+import express from "express";
+import { error } from "../models/error";
+import { decodeToken, generateToken, getUser } from "../auth-util";
+import { User, IUser, trimUsers, trimUser } from "../models/user";
+import { response } from "../models/response";
+import { AnimeModel } from "../models/anime";
+import bcrypt from "bcrypt";
+import validate from "../validate";
+import { HASH_ROUNDS } from "../constants";
+import t from "../thunk";
+import { HttpError } from "../http-error";
 
 const router = express.Router();
 
-router.post('/reset-votes', t(async (req, res) => {
-  const token = req.header('auth-token');
+router.post(
+  "/reset-votes",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
 
-  const admin = await getUser(token, true);
+    await getUser(token, true);
 
-  const users = await User.find();
+    const users = await User.find();
 
-  await Promise.all(users.map(user => {
-    user.votesAvailable = 3;
-    user.votedFor = [];
-    return user.save();
-  }))
+    await Promise.all(
+      users.map((user) => {
+        user.votesAvailable = 3;
+        user.votedFor = [];
+        return user.save();
+      })
+    );
 
-  await AnimeModel.deleteMany({ continuingSeries: false });
+    const animes = await AnimeModel.find({ continuingSeries: false });
 
-  res.send(response(0, 'success'));
-}));
+    await Promise.all(
+      animes.map((anime) => {
+        anime.thisWeek = false;
+        anime.votes = 0;
+        return anime.save();
+      })
+    );
 
-router.post('/init', t(async (req, res) => {
-  validate(req.body, ["username:string!", "password:string"])
+    res.send(response(0, "success"));
+  })
+);
 
-  const searchResults = await User.find({ admin: true });
+router.post(
+  "/init",
+  t(async (req, res) => {
+    validate(req.body, ["username:string!", "password:string"]);
 
-  if (searchResults.length > 0) {
-    throw new HttpError(403, "Administrator already exists. Create new administrators using another administrator account.");
-  }
+    const searchResults = await User.find({ admin: true });
 
-  const username = req.body.username as string;
-  const password = await bcrypt.hash(req.body.password, HASH_ROUNDS);
-  const admin = true;
+    if (searchResults.length > 0) {
+      throw new HttpError(
+        403,
+        "Administrator already exists. Create new administrators using another administrator account."
+      );
+    }
 
-  const user = new User({ username, password, admin, votesAvailable: 3, votedFor: [] });
+    const username = req.body.username as string;
+    const password = await bcrypt.hash(req.body.password, HASH_ROUNDS);
+    const admin = true;
 
-  await user.save();
-
-  res.send(response(0, { token: generateToken(user) }));
-}));
-
-router.post('/new-user', t(async (req, res) => {
-  validate(req.body, ['username:string!', 'admin:boolean!']);
-  
-  const token = req.header('auth-token');
-
-  await getUser(token, true);
-
-  const username = req.body.username as string;
-  const admin = req.body.admin as boolean;
-
-  const results = await User.findOne({ username });
-
-  if (results != null) {
-    throw new HttpError(409, "User with provided username already exists.");
-  }
-
-  try {
-    const newUser = new User({
+    const user = new User({
       username,
+      password,
       admin,
       votesAvailable: 3,
-      votedFor: []
+      votedFor: [],
     });
 
-    await newUser.save();
+    await user.save();
 
-    res.send(response(0, trimUser(newUser)));
-  } catch (err) {
-    throw new HttpError(500, err.message);
-  }
-}));
+    res.send(response(0, { token: generateToken(user) }));
+  })
+);
 
-router.get('/users', t(async (req, res) => {
-  const token = req.header('auth-token');
+router.post(
+  "/new-user",
+  t(async (req, res) => {
+    validate(req.body, ["username:string!", "admin:boolean!"]);
 
-  const user = await getUser(token, true);
+    const token = req.header("auth-token");
 
-  const users = await User.find({ username: { $not: { $eq: user.username } } });
+    await getUser(token, true);
 
-  res.send(response(0, trimUsers(users)));
-}));
+    const username = req.body.username as string;
+    const admin = req.body.admin as boolean;
 
-router.put('/user/:username', t(async (req, res) => {
-  const token = req.header('auth-token');
+    const results = await User.findOne({ username });
 
-  await getUser(token, true);
-
-  const currentUsername = req.params.username;
-
-  const user = await User.findOne({ username: currentUsername });
-
-  if (!user) {
-    throw new HttpError(404, "User not found.");
-  }
-
-  const newUsername = req.body.username as string;
-
-  if (newUsername != user.username) {
-    const existingUser = await User.findOne({ username: newUsername });
-
-    if (existingUser) {
+    if (results != null) {
       throw new HttpError(409, "User with provided username already exists.");
     }
 
-    if (newUsername) {
-      user.username = newUsername;
+    try {
+      const newUser = new User({
+        username,
+        admin,
+        votesAvailable: 3,
+        votedFor: [],
+      });
+
+      await newUser.save();
+
+      res.send(response(0, trimUser(newUser)));
+    } catch (err) {
+      throw new HttpError(500, err.message);
     }
-  }
-  
-  const resetPassword = req.body.resetPassword as boolean;
-  if (resetPassword) {
-    user.password = "";
-  }
+  })
+);
 
-  const votes = req.body.votes as number;
-  if (typeof votes === 'number') {
-    user.votesAvailable = votes;
-  }
+router.get(
+  "/users",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
 
-  const admin = req.body.admin as boolean;
-  if (typeof admin === 'boolean') {
-    user.admin = admin;
-  }
+    const user = await getUser(token, true);
 
-  await user.save();
+    const users = await User.find({
+      username: { $not: { $eq: user.username } },
+    });
 
-  res.send(response(0, 'success'));
-}));
+    res.send(response(0, trimUsers(users)));
+  })
+);
 
-router.delete('/user/:username', t(async (req, res) => {
-  validate(req.params, ['username:string!']);
+router.put(
+  "/user/:username",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
 
-  const token = req.header('auth-token');
+    await getUser(token, true);
 
-  const admin = await getUser(token, true);
+    const currentUsername = req.params.username;
 
-  const status = await User.deleteOne({ username: req.params.username });
+    const user = await User.findOne({ username: currentUsername });
 
-  if (status.ok) {
-    if (typeof status.deletedCount === 'number') {
-      if (status.deletedCount > 0) {
-        res.send(response(0, 'success'));
-        return;
+    if (!user) {
+      throw new HttpError(404, "User not found.");
+    }
+
+    const newUsername = req.body.username as string;
+
+    if (newUsername != user.username) {
+      const existingUser = await User.findOne({ username: newUsername });
+
+      if (existingUser) {
+        throw new HttpError(409, "User with provided username already exists.");
+      }
+
+      if (newUsername) {
+        user.username = newUsername;
       }
     }
-  }
 
-  throw new HttpError(500, 'Unable to delete user.');
-}));
+    const resetPassword = req.body.resetPassword as boolean;
+    if (resetPassword) {
+      user.password = "";
+    }
+
+    const votes = req.body.votes as number;
+    if (typeof votes === "number") {
+      user.votesAvailable = votes;
+    }
+
+    const admin = req.body.admin as boolean;
+    if (typeof admin === "boolean") {
+      user.admin = admin;
+    }
+
+    await user.save();
+
+    res.send(response(0, "success"));
+  })
+);
+
+router.delete(
+  "/user/:username",
+  t(async (req, res) => {
+    validate(req.params, ["username:string!"]);
+
+    const token = req.header("auth-token");
+
+    const admin = await getUser(token, true);
+
+    const status = await User.deleteOne({ username: req.params.username });
+
+    if (status.ok) {
+      if (typeof status.deletedCount === "number") {
+        if (status.deletedCount > 0) {
+          res.send(response(0, "success"));
+          return;
+        }
+      }
+    }
+
+    throw new HttpError(500, "Unable to delete user.");
+  })
+);
 
 export default router;

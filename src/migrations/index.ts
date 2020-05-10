@@ -1,8 +1,9 @@
 import { Migration } from "./Migration.model";
 import { addSupervote } from "./add-supervote";
 import { Update } from "../models/update";
+import { addLivestream } from "./add-livestream";
 
-const migrations: Migration[] = [addSupervote];
+const migrations: Migration[] = [addLivestream, addSupervote];
 
 export async function runMigrations() {
   let lastUpdate = -1;

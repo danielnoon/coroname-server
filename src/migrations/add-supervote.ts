@@ -3,6 +3,8 @@ import { User } from "../models/user";
 import { AnimeModel } from "../models/anime";
 
 export const addSupervote = new Migration(0, async () => {
+  console.log("Add Supervote");
+
   const users = await User.find({});
   for (let user of users) {
     user.supervoteAvailable = true;
