@@ -6,8 +6,6 @@ import admin from "./controllers/admin";
 import users from "./controllers/users";
 import cors from "cors";
 import bp from "body-parser";
-import { HttpError } from "./http-error";
-import { error } from "./models/error";
 import { runMigrations } from "./migrations";
 
 const app = express();
@@ -31,7 +29,7 @@ app.use("/anime", anime);
 app.use("/admin", admin);
 app.use("/users", users);
 
-async () => {
+(async () => {
   await runMigrations();
   app.listen(process.env.PORT || 3000, () => console.log("Listening!"));
-};
+})();
