@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
   username: string;
@@ -7,6 +7,7 @@ export interface IUser extends Document {
   votesAvailable: number;
   votedFor: number[];
   email: string;
+  supervoteAvailable: boolean;
 }
 
 const UserSchema = new Schema({
@@ -15,10 +16,11 @@ const UserSchema = new Schema({
   admin: Boolean,
   votesAvailable: Number,
   votedFor: [Number],
-  email: String
+  email: String,
+  supervoteAvailable: Boolean,
 });
 
-export const User = mongoose.model<IUser>('User', UserSchema);
+export const User = mongoose.model<IUser>("User", UserSchema);
 
 export function trimUser(user: IUser) {
   return {
@@ -26,10 +28,11 @@ export function trimUser(user: IUser) {
     admin: user.admin,
     votesAvailable: user.votesAvailable,
     votedFor: user.votedFor,
-    email: user.email
+    email: user.email,
+    supervoteAvaliable: user.supervoteAvailable,
   };
 }
 
 export function trimUsers(users: IUser[]) {
-  return users.map(u => trimUser(u));
+  return users.map((u) => trimUser(u));
 }

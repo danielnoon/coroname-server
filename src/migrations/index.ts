@@ -1,6 +1,6 @@
 import { Migration } from "./Migration.model";
 import { addSupervote } from "./add-supervote";
-import { Update } from "../models/meta";
+import { Update } from "../models/update";
 
 const migrations: Migration[] = [addSupervote];
 
