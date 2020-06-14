@@ -1,6 +1,11 @@
 import express from "express";
-import { response } from "../models/response";
 import Kitsu from "kitsu";
+import validate from "../validate";
+import t from "../thunk";
+import { getUser } from "../auth-util";
+import { HttpError } from "../http-error";
+import { response } from "../models/response";
+import { User, trimUsers } from "../models/user";
 import {
   kitsuToCoroname,
   kitsuArrayToCoroname,
@@ -8,11 +13,6 @@ import {
   animeModelAsAnime,
   Anime,
 } from "../models/anime";
-import { getUser } from "../auth-util";
-import validate from "../validate";
-import { User, trimUsers } from "../models/user";
-import { HttpError } from "../http-error";
-import t from "../thunk";
 
 const kitsu = new Kitsu();
 

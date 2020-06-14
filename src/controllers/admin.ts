@@ -1,14 +1,13 @@
 import express from "express";
-import { error } from "../models/error";
-import { decodeToken, generateToken, getUser } from "../auth-util";
-import { User, IUser, trimUsers, trimUser } from "../models/user";
-import { response } from "../models/response";
-import { AnimeModel } from "../models/anime";
 import bcrypt from "bcrypt";
 import validate from "../validate";
-import { HASH_ROUNDS } from "../constants";
 import t from "../thunk";
+import { response } from "../models/response";
+import { AnimeModel } from "../models/anime";
+import { HASH_ROUNDS } from "../constants";
 import { HttpError } from "../http-error";
+import { generateToken, getUser } from "../auth-util";
+import { User, trimUsers, trimUser } from "../models/user";
 
 const router = express.Router();
 
@@ -46,7 +45,7 @@ router.post(
 router.post(
   "/init",
   t(async (req, res) => {
-    validate(req.body, ["username:string!", "password:string"]);
+    validate(req.body, ["username:string!", "password:string!"]);
 
     const searchResults = await User.find({ admin: true });
 
