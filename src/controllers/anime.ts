@@ -1,6 +1,7 @@
 import express from "express";
 import Kitsu from "kitsu";
 import validate from "../validate";
+import md5 from "md5";
 import t from "../thunk";
 import { getUser } from "../auth-util";
 import { HttpError } from "../http-error";
@@ -12,6 +13,7 @@ import {
   AnimeModel,
   animeModelAsAnime,
   Anime,
+  IAnime,
 } from "../models/anime";
 
 const kitsu = new Kitsu();
@@ -189,6 +191,21 @@ router.get(
 );
 
 router.get(
+  "/all",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
+
+    await getUser(token);
+
+    const anime = (await AnimeModel.find().sort({ votes: -1 })).map((a) =>
+      animeModelAsAnime(a)
+    );
+
+    res.send(response(0, anime));
+  })
+);
+
+router.get(
   "/:showId/voters",
   t(async (req, res) => {
     const token = req.header("auth-token");
@@ -199,14 +216,86 @@ router.get(
 
     const id = parseInt(req.params.showId);
 
-    const show = AnimeModel.findOne({ kitsuId: id });
+    const show = await AnimeModel.findOne({ kitsuId: id });
 
-    if (!show)
-      throw new HttpError(404, "Show does not exist or has not been voted on.");
+    if (!show) return res.send(response(0, []));
 
     const voters = await User.find({ votedFor: id });
 
     res.send(response(0, trimUsers(voters)));
+  })
+);
+
+router.delete(
+  "/:showId",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
+
+    await getUser(token, true);
+
+    validate(req.params, ["showId:number"]);
+
+    const id = parseInt(req.params.showId);
+
+    const show = (await AnimeModel.findOne({ kitsuId: id })) as Anime;
+
+    if (!show) throw new HttpError(422, "Show does not exist in database.");
+
+    const users = await User.find({ votedFor: id });
+
+    await Promise.all(
+      users.map((user) => {
+        user.votedFor.splice(user.votedFor.indexOf(id), 1);
+        user.votesAvailable += 1;
+        user.save();
+      })
+    );
+
+    show.thisWeek = false;
+    show.continuingSeries = false;
+    show.votes = 0;
+
+    await (show as IAnime).save();
+
+    return res.send(response(0, {}));
+  })
+);
+
+router.put(
+  "/custom",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
+
+    await getUser(token, true);
+
+    validate(req.body, [
+      "title:string!",
+      "poster:string!",
+      "synopsis:string!",
+      "nsfw:boolean",
+      "episodes:number!",
+    ]);
+
+    const id = Math.round(
+      parseInt(md5(req.body.title + req.body.poster), 16) / 1e30
+    );
+
+    if (await AnimeModel.exists({ kitsuId: id })) {
+      throw new HttpError(400, "Custom anime already exists.");
+    }
+
+    const anime = new AnimeModel({
+      kitsuId: id,
+      ...req.body,
+      supervoted: false,
+      continuingSeries: false,
+      votes: 0,
+      thisWeek: true,
+      episode: 0,
+    });
+    await anime.save();
+
+    return res.send(response(0, {}));
   })
 );
 
