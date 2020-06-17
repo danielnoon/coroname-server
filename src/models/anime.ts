@@ -72,6 +72,8 @@ const animeSchema = new Schema<IAnime>({
   thisWeek: Boolean,
 });
 
+animeSchema.index({ title: "text", synopsis: "text" });
+
 export const AnimeModel = mongoose.model<IAnime>("Anime", animeSchema);
 
 export function animeModelAsAnime(anime: IAnime) {
@@ -88,4 +90,8 @@ export function animeModelAsAnime(anime: IAnime) {
     anime.episode,
     anime.episodes
   );
+}
+
+export function animeModelArrayAsAnime(anime: IAnime[]) {
+  return anime.map((a) => animeModelAsAnime(a));
 }

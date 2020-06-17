@@ -14,6 +14,7 @@ import {
   animeModelAsAnime,
   Anime,
   IAnime,
+  animeModelArrayAsAnime,
 } from "../models/anime";
 
 const kitsu = new Kitsu();
@@ -28,6 +29,10 @@ router.get(
 
     const query = req.query.q as string;
 
+    const dbResults = animeModelArrayAsAnime(
+      await AnimeModel.find({ $text: { $search: query } })
+    );
+
     const { data, errors } = await kitsu.get("anime", {
       filter: { text: query },
     });
@@ -36,9 +41,13 @@ router.get(
       throw new HttpError(errors[0].code, errors[0].title);
     }
 
-    const anime = await kitsuArrayToCoroname(data);
+    const kitsuResults = await kitsuArrayToCoroname(data);
 
-    res.send(response(0, anime));
+    const filteredKitsu = kitsuResults.filter(
+      (a) => !dbResults.find((b) => a.kitsuId == b.kitsuId)
+    );
+
+    res.send(response(0, [...dbResults, ...filteredKitsu]));
   })
 );
 
@@ -227,15 +236,15 @@ router.get(
 );
 
 router.delete(
-  "/:showId",
+  "/show/:id",
   t(async (req, res) => {
     const token = req.header("auth-token");
 
     await getUser(token, true);
 
-    validate(req.params, ["showId:number"]);
+    validate(req.params, ["id:number"]);
 
-    const id = parseInt(req.params.showId);
+    const id = parseInt(req.params.id);
 
     const show = (await AnimeModel.findOne({ kitsuId: id })) as Anime;
 
@@ -261,7 +270,7 @@ router.delete(
   })
 );
 
-router.put(
+router.post(
   "/custom",
   t(async (req, res) => {
     const token = req.header("auth-token");
