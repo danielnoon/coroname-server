@@ -1,12 +1,12 @@
 import express from "express";
 import Kitsu from "kitsu";
-import validate from "../validate";
+import validate from "../../helpers/validate";
 import md5 from "md5";
-import t from "../thunk";
-import { getUser } from "../auth-util";
-import { HttpError } from "../http-error";
-import { response } from "../models/response";
-import { User, trimUsers } from "../models/user";
+import t from "../../thunk";
+import { getUser } from "../../auth-util";
+import { HttpError } from "../../http-error";
+import { response } from "../../models/response";
+import { User, trimUsers } from "../../models/user";
 import {
   kitsuToCoroname,
   kitsuArrayToCoroname,
@@ -15,7 +15,7 @@ import {
   Anime,
   IAnime,
   animeModelArrayAsAnime,
-} from "../models/anime";
+} from "../../models/anime";
 
 const kitsu = new Kitsu();
 

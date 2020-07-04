@@ -1,46 +1,18 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import validate from "../validate";
-import t from "../thunk";
-import { response } from "../models/response";
-import { AnimeModel } from "../models/anime";
-import { HASH_ROUNDS } from "../constants";
-import { HttpError } from "../http-error";
-import { generateToken, getUser } from "../auth-util";
-import { User, trimUsers, trimUser } from "../models/user";
+import validate from "../../helpers/validate";
+import t from "../../thunk";
+import { response } from "../../models/response";
+import { AnimeModel } from "../../models/anime";
+import { HASH_ROUNDS } from "../../constants";
+import { Permission } from "../../Permission";
+import { HttpError } from "../../http-error";
+import { generateToken } from "../../auth-util";
+import { User, trimUsers, trimUser } from "../../models/user";
+import getUser from "../../helpers/getUser";
+import checkPermissions from "../../helpers/checkPermissions";
 
 const router = express.Router();
-
-router.post(
-  "/reset-votes",
-  t(async (req, res) => {
-    const token = req.header("auth-token");
-
-    await getUser(token, true);
-
-    const users = await User.find();
-
-    await Promise.all(
-      users.map((user) => {
-        user.votesAvailable = 3;
-        user.votedFor = [];
-        return user.save();
-      })
-    );
-
-    const animes = await AnimeModel.find({ continuingSeries: false });
-
-    await Promise.all(
-      animes.map((anime) => {
-        anime.thisWeek = false;
-        anime.votes = 0;
-        return anime.save();
-      })
-    );
-
-    res.send(response(0, "success"));
-  })
-);
 
 router.post(
   "/init",
@@ -81,10 +53,15 @@ router.post(
 
     const token = req.header("auth-token");
 
-    await getUser(token, true);
+    const user = await getUser(token);
+    checkPermissions(user, Permission.ADD_USERS);
 
     const username = req.body.username as string;
     const admin = req.body.admin as boolean;
+
+    if (admin) {
+      checkPermissions(user, Permission.ADMIN);
+    }
 
     const results = await User.findOne({ username });
 
@@ -114,7 +91,9 @@ router.get(
   t(async (req, res) => {
     const token = req.header("auth-token");
 
-    const user = await getUser(token, true);
+    const user = await getUser(token);
+
+    checkPermissions(user, Permission.EDIT_USERS);
 
     const users = await User.find({
       username: { $not: { $eq: user.username } },
@@ -129,7 +108,8 @@ router.put(
   t(async (req, res) => {
     const token = req.header("auth-token");
 
-    await getUser(token, true);
+    const editor = await getUser(token);
+    checkPermissions(editor, Permission.EDIT_USERS);
 
     const currentUsername = req.params.username;
 
@@ -181,7 +161,8 @@ router.delete(
 
     const token = req.header("auth-token");
 
-    const admin = await getUser(token, true);
+    const user = await getUser(token);
+    checkPermissions(user, Permission.DELETE_USERS);
 
     const status = await User.deleteOne({ username: req.params.username });
 

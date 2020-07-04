@@ -1,12 +1,12 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import validate from "../validate";
-import t from "./../thunk";
-import { HttpError } from "../http-error";
-import { HASH_ROUNDS } from "../constants";
-import { User, IUser } from "../models/user";
-import { response } from "../models/response";
-import { generateToken, getUser } from "../auth-util";
+import validate from "../../helpers/validate";
+import t from "../../thunk";
+import { HttpError } from "../../http-error";
+import { HASH_ROUNDS } from "../../constants";
+import { User, IUser } from "../../models/user";
+import { response } from "../../models/response";
+import { generateToken, getUser } from "../../auth-util";
 
 const router = express.Router();
 
