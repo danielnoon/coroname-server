@@ -38,7 +38,7 @@ router.get(
     });
 
     if (continuingSeries) {
-      all.push(animeModelAsAnime(continuingSeries));
+      all.push(animeModelAsAnime(continuingSeries, true));
     }
 
     const rest = await AnimeModel.find({
@@ -46,7 +46,7 @@ router.get(
       thisWeek: true,
     }).sort({ votes: -1 });
 
-    rest.forEach((anime) => all.push(animeModelAsAnime(anime)));
+    rest.forEach((anime) => all.push(animeModelAsAnime(anime, true)));
 
     res.send(response(0, all));
   })

@@ -12,7 +12,8 @@ export class Anime {
     public supervoted: boolean,
     public thisWeek: boolean,
     public episode: number,
-    public episodes: number
+    public episodes: number,
+    public native: boolean
   ) {}
 }
 
@@ -37,7 +38,7 @@ export async function kitsuToCoroname(anime: any) {
   const existing = await AnimeModel.findOne({ kitsuId: id });
 
   if (existing) {
-    return animeModelAsAnime(existing);
+    return animeModelAsAnime(existing, true);
   } else {
     return new Anime(
       id,
@@ -50,7 +51,8 @@ export async function kitsuToCoroname(anime: any) {
       false,
       true,
       0,
-      episodes
+      episodes,
+      false
     );
   }
 }
@@ -76,7 +78,7 @@ animeSchema.index({ title: "text", synopsis: "text" });
 
 export const AnimeModel = mongoose.model<IAnime>("Anime", animeSchema);
 
-export function animeModelAsAnime(anime: IAnime) {
+export function animeModelAsAnime(anime: IAnime, native: boolean) {
   return new Anime(
     anime.kitsuId,
     anime.title,
@@ -88,10 +90,11 @@ export function animeModelAsAnime(anime: IAnime) {
     anime.supervoted,
     anime.thisWeek,
     anime.episode,
-    anime.episodes
+    anime.episodes,
+    native
   );
 }
 
 export function animeModelArrayAsAnime(anime: IAnime[]) {
-  return anime.map((a) => animeModelAsAnime(a));
+  return anime.map((a) => animeModelAsAnime(a, true));
 }

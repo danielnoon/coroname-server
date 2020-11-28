@@ -87,7 +87,7 @@ router.get(
       show = await getKitsuAnime(id);
     }
 
-    res.send(response(0, animeModelAsAnime(show)));
+    res.send(response(0, animeModelAsAnime(show, true)));
   })
 );
 
@@ -201,7 +201,7 @@ router.get(
     checkPermissions(user, Permission.VIEW_ANIME);
 
     const anime = (await AnimeModel.find().sort({ votes: -1 })).map((a) =>
-      animeModelAsAnime(a)
+      animeModelAsAnime(a, true)
     );
 
     res.send(response(0, anime));

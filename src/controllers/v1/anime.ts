@@ -86,7 +86,7 @@ router.post(
 
     await anime.save();
 
-    res.send(response(0, animeModelAsAnime(anime)));
+    res.send(response(0, animeModelAsAnime(anime, true)));
   })
 );
 
@@ -185,7 +185,7 @@ router.get(
     });
 
     if (continuingSeries) {
-      all.push(animeModelAsAnime(continuingSeries));
+      all.push(animeModelAsAnime(continuingSeries, true));
     }
 
     const rest = await AnimeModel.find({
@@ -193,7 +193,7 @@ router.get(
       thisWeek: true,
     }).sort({ votes: -1 });
 
-    rest.forEach((anime) => all.push(animeModelAsAnime(anime)));
+    rest.forEach((anime) => all.push(animeModelAsAnime(anime, true)));
 
     res.send(response(0, all));
   })
@@ -207,7 +207,7 @@ router.get(
     await getUser(token);
 
     const anime = (await AnimeModel.find().sort({ votes: -1 })).map((a) =>
-      animeModelAsAnime(a)
+      animeModelAsAnime(a, true)
     );
 
     res.send(response(0, anime));

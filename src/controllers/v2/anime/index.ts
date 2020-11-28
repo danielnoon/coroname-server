@@ -93,7 +93,7 @@ router.put(
 
     await anime.save();
 
-    res.send(response(0, animeModelAsAnime(anime)));
+    res.send(response(0, animeModelAsAnime(anime, true)));
   })
 );
 
