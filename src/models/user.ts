@@ -20,7 +20,7 @@ const UserSchema = new Schema({
   votedFor: [Number],
   email: String,
   supervoteAvailable: Boolean,
-  permissions: [Number],
+  permissions: [String],
 });
 
 export const User = mongoose.model<IUser>("User", UserSchema);

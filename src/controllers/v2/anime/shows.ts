@@ -1,20 +1,16 @@
 import express from "express";
-import Kitsu from "kitsu";
 import validate from "../../../helpers/validate";
 import md5 from "md5";
 import t from "../../../thunk";
 import getUser from "../../../helpers/getUser";
 import { HttpError } from "../../../http-error";
 import { response } from "../../../models/response";
-import { User, trimUsers } from "../../../models/user";
+import { User } from "../../../models/user";
 import {
-  kitsuToCoroname,
-  kitsuArrayToCoroname,
   AnimeModel,
   animeModelAsAnime,
   Anime,
   IAnime,
-  animeModelArrayAsAnime,
 } from "../../../models/anime";
 import getKitsuAnime from "../../../helpers/getKitsuAnime";
 import isDefined from "../../../helpers/isDefined";
@@ -27,7 +23,6 @@ router.post(
   "/",
   t(async (req, res) => {
     const token = req.header("auth-token");
-
     const user = await getUser(token);
     checkPermissions(user, Permission.ADD_ANIME);
 
@@ -66,7 +61,6 @@ router.get(
   "/:id",
   t(async (req, res) => {
     const token = req.header("auth-token");
-
     const user = await getUser(token);
     checkPermissions(user, Permission.VIEW_ANIME);
 
@@ -80,7 +74,6 @@ router.get(
     ]);
 
     const id = parseInt(req.params.id);
-
     let show = await AnimeModel.findOne({ kitsuId: id });
 
     if (!show) {
@@ -95,9 +88,7 @@ router.patch(
   "/:id",
   t(async (req, res) => {
     const token = req.header("auth-token");
-
     const user = await getUser(token);
-    checkPermissions(user, Permission.EDIT_ANIME);
 
     validate(req.params, ["id:number"]);
     validate(req.body, [
@@ -107,10 +98,10 @@ router.patch(
       "nsfw:boolean",
       "continuingSeries:boolean",
       "thisWeek:boolean",
+      "episodes:number",
     ]);
 
     const id = parseInt(req.params.id);
-
     let show = (await AnimeModel.findOne({ kitsuId: id })) as Anime;
 
     if (!show) {
@@ -124,30 +115,46 @@ router.patch(
       nsfw,
       continuingSeries,
       thisWeek,
+      episode,
     } = req.body as Anime;
 
     if (title) {
+      checkPermissions(user, Permission.EDIT_ANIME);
       show.title = title;
     }
 
     if (poster) {
+      checkPermissions(user, Permission.EDIT_ANIME);
       show.poster = poster;
     }
 
     if (synopsis) {
+      checkPermissions(user, Permission.EDIT_ANIME);
       show.synopsis = synopsis;
     }
 
     if (isDefined(nsfw)) {
+      checkPermissions(user, Permission.EDIT_ANIME);
       show.nsfw = nsfw;
     }
 
     if (isDefined(continuingSeries)) {
+      checkPermissions(user, Permission.CHANGE_CONTINUING_SERIES);
       show.continuingSeries = continuingSeries;
     }
 
     if (isDefined(thisWeek)) {
+      checkPermissions(user, Permission.EDIT_ANIME);
       show.thisWeek = thisWeek;
+    }
+
+    if (isDefined(episode)) {
+      checkPermissions(user, Permission.CHANGE_EPISODE);
+      if (episode <= show.episodes && episode > 0) {
+        show.episode = episode;
+      } else {
+        throw new HttpError(422, "Episode number must be an existing episode.");
+      }
     }
 
     await (show as IAnime).save();
@@ -160,14 +167,11 @@ router.delete(
   "/:id",
   t(async (req, res) => {
     const token = req.header("auth-token");
-
     const user = await getUser(token);
     checkPermissions(user, Permission.DELETE_ANIME);
 
     validate(req.params, ["id:number"]);
-
     const id = parseInt(req.params.id);
-
     const show = (await AnimeModel.findOne({ kitsuId: id })) as Anime;
 
     if (!show) throw new HttpError(422, "Show does not exist in database.");
@@ -196,7 +200,6 @@ router.get(
   "/",
   t(async (req, res) => {
     const token = req.header("auth-token");
-
     const user = await getUser(token);
     checkPermissions(user, Permission.VIEW_ANIME);
 

@@ -5,17 +5,17 @@ import { IUser } from "../models/user";
 export default (
   user: IUser,
   permissions: Permission[] | Permission,
-  owner?: number
+  owner?: IUser
 ) => {
   const p = Array.isArray(permissions)
     ? permissions
     : ([permissions] as Permission[]);
 
-  if (user.admin) {
+  if (user.admin || user.permissions.includes(Permission.ADMIN)) {
     return true;
   }
 
-  if (owner && user._id === owner) {
+  if (owner && user.id === owner.id) {
     return true;
   }
 

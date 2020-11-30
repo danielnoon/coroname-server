@@ -7,17 +7,8 @@ import getUser from "../../../helpers/getUser";
 import { HttpError } from "../../../http-error";
 import { response } from "../../../models/response";
 import { User, trimUsers } from "../../../models/user";
-import {
-  kitsuToCoroname,
-  kitsuArrayToCoroname,
-  AnimeModel,
-  animeModelAsAnime,
-  Anime,
-  IAnime,
-  animeModelArrayAsAnime,
-} from "../../../models/anime";
+import { AnimeModel } from "../../../models/anime";
 import getKitsuAnime from "../../../helpers/getKitsuAnime";
-import isDefined from "../../../helpers/isDefined";
 import checkPermissions from "../../../helpers/checkPermissions";
 import { Permission } from "../../../Permission";
 
@@ -26,10 +17,7 @@ const router = express.Router();
 router.post(
   "/:id",
   t(async (req, res) => {
-    validate(req.params, ["id:number"]);
-
     const token = req.header("auth-token");
-
     const user = await getUser(token);
     checkPermissions(user, Permission.VOTE);
 
@@ -37,6 +25,7 @@ router.post(
       throw new HttpError(403, "No votes remaining.");
     }
 
+    validate(req.params, ["id:number"]);
     const kitsuId = parseInt(req.params.id);
 
     if (user.votedFor.includes(kitsuId)) {
@@ -51,12 +40,10 @@ router.post(
 
     anime.votes++;
     anime.thisWeek = true;
-
     await anime.save();
 
     user.votesAvailable--;
     user.votedFor.push(kitsuId);
-
     await user.save();
 
     res.send(response(0, "success"));
@@ -66,13 +53,11 @@ router.post(
 router.delete(
   "/:id",
   t(async (req, res) => {
-    validate(req.params, ["id:number"]);
-
     const token = req.header("auth-token");
-
     const user = await getUser(token);
     checkPermissions(user, Permission.VOTE);
 
+    validate(req.params, ["id:number"]);
     const kitsuId = parseInt(req.params.id);
 
     if (!user.votedFor.includes(kitsuId)) {
@@ -86,12 +71,10 @@ router.delete(
     }
 
     anime.votes--;
-
     await anime.save();
 
     user.votesAvailable++;
     user.votedFor.splice(user.votedFor.indexOf(kitsuId), 1);
-
     await user.save();
 
     res.send(response(0, "success"));
@@ -102,20 +85,16 @@ router.get(
   "/:id",
   t(async (req, res) => {
     const token = req.header("auth-token");
-
     const user = await getUser(token);
     checkPermissions(user, Permission.VIEW_ANIME);
 
     validate(req.params, ["id:number"]);
-
     const id = parseInt(req.params.id);
-
     const show = await AnimeModel.findOne({ kitsuId: id });
 
     if (!show) return res.send(response(0, []));
 
     const voters = await User.find({ votedFor: id });
-
     res.send(response(0, trimUsers(voters)));
   })
 );
@@ -124,7 +103,6 @@ router.delete(
   "/",
   t(async (req, res) => {
     const token = req.header("auth-token");
-
     const user = await getUser(token);
     checkPermissions(user, [Permission.DELETE_VOTES, Permission.EDIT_ANIME]);
 
