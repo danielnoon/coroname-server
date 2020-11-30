@@ -8,7 +8,6 @@ const wrap = (
     res
       .status(err.code || 500)
       .send(error(err.message) || "Internal server error.");
-    next();
   });
 
 export default wrap;

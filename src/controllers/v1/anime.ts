@@ -1,18 +1,21 @@
 import express from "express";
-import { response } from "../models/response";
 import Kitsu from "kitsu";
+import validate from "../../helpers/validate";
+import md5 from "md5";
+import t from "../../thunk";
+import { getUser } from "../../auth-util";
+import { HttpError } from "../../http-error";
+import { response } from "../../models/response";
+import { User, trimUsers } from "../../models/user";
 import {
   kitsuToCoroname,
   kitsuArrayToCoroname,
   AnimeModel,
   animeModelAsAnime,
   Anime,
-} from "../models/anime";
-import { getUser } from "../auth-util";
-import validate from "../validate";
-import { User, trimUsers } from "../models/user";
-import { HttpError } from "../http-error";
-import t from "../thunk";
+  IAnime,
+  animeModelArrayAsAnime,
+} from "../../models/anime";
 
 const kitsu = new Kitsu();
 
@@ -26,6 +29,10 @@ router.get(
 
     const query = req.query.q as string;
 
+    const dbResults = animeModelArrayAsAnime(
+      await AnimeModel.find({ $text: { $search: query } })
+    );
+
     const { data, errors } = await kitsu.get("anime", {
       filter: { text: query },
     });
@@ -34,9 +41,13 @@ router.get(
       throw new HttpError(errors[0].code, errors[0].title);
     }
 
-    const anime = await kitsuArrayToCoroname(data);
+    const kitsuResults = await kitsuArrayToCoroname(data);
 
-    res.send(response(0, anime));
+    const filteredKitsu = kitsuResults.filter(
+      (a) => !dbResults.find((b) => a.kitsuId == b.kitsuId)
+    );
+
+    res.send(response(0, [...dbResults, ...filteredKitsu]));
   })
 );
 
@@ -75,7 +86,7 @@ router.post(
 
     await anime.save();
 
-    res.send(response(0, animeModelAsAnime(anime)));
+    res.send(response(0, animeModelAsAnime(anime, true)));
   })
 );
 
@@ -113,6 +124,7 @@ router.post(
     }
 
     anime.votes++;
+    anime.thisWeek = true;
 
     await anime.save();
 
@@ -173,16 +185,32 @@ router.get(
     });
 
     if (continuingSeries) {
-      all.push(animeModelAsAnime(continuingSeries));
+      all.push(animeModelAsAnime(continuingSeries, true));
     }
 
-    const rest = await AnimeModel.find({ continuingSeries: false }).sort({
-      votes: -1,
-    });
+    const rest = await AnimeModel.find({
+      continuingSeries: false,
+      thisWeek: true,
+    }).sort({ votes: -1 });
 
-    rest.forEach((anime) => all.push(animeModelAsAnime(anime)));
+    rest.forEach((anime) => all.push(animeModelAsAnime(anime, true)));
 
     res.send(response(0, all));
+  })
+);
+
+router.get(
+  "/all",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
+
+    await getUser(token);
+
+    const anime = (await AnimeModel.find().sort({ votes: -1 })).map((a) =>
+      animeModelAsAnime(a, true)
+    );
+
+    res.send(response(0, anime));
   })
 );
 
@@ -197,14 +225,86 @@ router.get(
 
     const id = parseInt(req.params.showId);
 
-    const show = AnimeModel.findOne({ kitsuId: id });
+    const show = await AnimeModel.findOne({ kitsuId: id });
 
-    if (!show)
-      throw new HttpError(404, "Show does not exist or has not been voted on.");
+    if (!show) return res.send(response(0, []));
 
     const voters = await User.find({ votedFor: id });
 
     res.send(response(0, trimUsers(voters)));
+  })
+);
+
+router.delete(
+  "/show/:id",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
+
+    await getUser(token, true);
+
+    validate(req.params, ["id:number"]);
+
+    const id = parseInt(req.params.id);
+
+    const show = (await AnimeModel.findOne({ kitsuId: id })) as Anime;
+
+    if (!show) throw new HttpError(422, "Show does not exist in database.");
+
+    const users = await User.find({ votedFor: id });
+
+    await Promise.all(
+      users.map((user) => {
+        user.votedFor.splice(user.votedFor.indexOf(id), 1);
+        user.votesAvailable += 1;
+        user.save();
+      })
+    );
+
+    show.thisWeek = false;
+    show.continuingSeries = false;
+    show.votes = 0;
+
+    await (show as IAnime).save();
+
+    return res.send(response(0, {}));
+  })
+);
+
+router.post(
+  "/custom",
+  t(async (req, res) => {
+    const token = req.header("auth-token");
+
+    await getUser(token, true);
+
+    validate(req.body, [
+      "title:string!",
+      "poster:string!",
+      "synopsis:string!",
+      "nsfw:boolean",
+      "episodes:number!",
+    ]);
+
+    const id = Math.round(
+      parseInt(md5(req.body.title + req.body.poster), 16) / 1e30
+    );
+
+    if (await AnimeModel.exists({ kitsuId: id })) {
+      throw new HttpError(400, "Custom anime already exists.");
+    }
+
+    const anime = new AnimeModel({
+      kitsuId: id,
+      ...req.body,
+      supervoted: false,
+      continuingSeries: false,
+      votes: 0,
+      thisWeek: true,
+      episode: 0,
+    });
+    await anime.save();
+
+    return res.send(response(0, {}));
   })
 );
 

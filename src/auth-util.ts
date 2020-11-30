@@ -1,18 +1,18 @@
+import jwt from "jsonwebtoken";
 import { IUser, User } from "./models/user";
-import jwt from 'jsonwebtoken';
 import { Token } from "./models/token";
 import { HttpError } from "./http-error";
 
-const TEST_SECRET = 'g4bno9ui2';
+const TEST_SECRET = "g4bno9ui2";
 
 export function generateToken(user: IUser) {
-  const token: Token = { 
+  const token: Token = {
     sub: user._id,
     username: user.username,
     admin: user.admin,
     votesAvailable: user.votesAvailable,
     votedFor: user.votedFor,
-    iat: Date.now()
+    iat: Date.now(),
   };
 
   return jwt.sign(token, process.env.JWT_SECRET || TEST_SECRET);

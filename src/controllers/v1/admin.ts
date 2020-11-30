@@ -1,14 +1,13 @@
 import express from "express";
-import { error } from "../models/error";
-import { decodeToken, generateToken, getUser } from "../auth-util";
-import { User, IUser, trimUsers, trimUser } from "../models/user";
-import { response } from "../models/response";
-import { AnimeModel } from "../models/anime";
 import bcrypt from "bcrypt";
-import validate from "../validate";
-import { HASH_ROUNDS } from "../constants";
-import t from "../thunk";
-import { HttpError } from "../http-error";
+import validate from "../../helpers/validate";
+import t from "../../thunk";
+import { response } from "../../models/response";
+import { AnimeModel } from "../../models/anime";
+import { HASH_ROUNDS } from "../../constants";
+import { HttpError } from "../../http-error";
+import { generateToken, getUser } from "../../auth-util";
+import { User, trimUsers, trimUser } from "../../models/user";
 
 const router = express.Router();
 
@@ -17,7 +16,7 @@ router.post(
   t(async (req, res) => {
     const token = req.header("auth-token");
 
-    const admin = await getUser(token, true);
+    await getUser(token, true);
 
     const users = await User.find();
 
@@ -29,7 +28,15 @@ router.post(
       })
     );
 
-    await AnimeModel.deleteMany({ continuingSeries: false });
+    const animes = await AnimeModel.find({ continuingSeries: false });
+
+    await Promise.all(
+      animes.map((anime) => {
+        anime.thisWeek = false;
+        anime.votes = 0;
+        return anime.save();
+      })
+    );
 
     res.send(response(0, "success"));
   })
@@ -38,7 +45,7 @@ router.post(
 router.post(
   "/init",
   t(async (req, res) => {
-    validate(req.body, ["username:string!", "password:string"]);
+    validate(req.body, ["username:string!", "password:string!"]);
 
     const searchResults = await User.find({ admin: true });
 
