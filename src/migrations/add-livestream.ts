@@ -1,5 +1,5 @@
 import { Migration } from "./Migration.model";
-import { AnimeModel, Anime, kitsuToCoroname } from "../models/anime";
+import { AnimeModel, kitsuToCoroname } from "../models/anime";
 import Kitsu from "kitsu";
 
 export const addLivestream = new Migration(1, async () => {
@@ -11,7 +11,7 @@ export const addLivestream = new Migration(1, async () => {
 
   await Promise.all(
     animes.map((anime) => {
-      return new Promise(async (resolve, reject) => {
+      return new Promise<void>(async (resolve, reject) => {
         anime.thisWeek = true;
         anime.episode = 0;
 
