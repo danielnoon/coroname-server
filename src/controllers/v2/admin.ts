@@ -4,12 +4,9 @@ import validate from "../../helpers/validate";
 import t from "../../thunk";
 import { response } from "../../models/response";
 import { HASH_ROUNDS } from "../../constants";
-import { Permission } from "../../Permission";
 import { HttpError } from "../../http-error";
 import { generateToken } from "../../auth-util";
-import { User, trimUsers } from "../../models/user";
-import getUser from "../../helpers/getUser";
-import checkPermissions from "../../helpers/checkPermissions";
+import { User } from "../../models/user";
 
 const router = express.Router();
 
