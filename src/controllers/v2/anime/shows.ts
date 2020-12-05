@@ -150,7 +150,7 @@ router.patch(
 
     if (isDefined(episode)) {
       checkPermissions(user, Permission.CHANGE_EPISODE);
-      if (episode <= show.episodes && episode > 0) {
+      if (episode <= show.episodes && episode >= 0) {
         show.episode = episode;
       } else {
         throw new HttpError(422, "Episode number must be an existing episode.");
@@ -210,7 +210,5 @@ router.get(
     res.send(response(0, anime));
   })
 );
-
-router.get("/");
 
 export default router;

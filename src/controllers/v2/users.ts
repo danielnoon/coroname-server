@@ -9,6 +9,7 @@ import { response } from "../../models/response";
 import { HttpError } from "../../http-error";
 import { Permission } from "../../Permission";
 import { HASH_ROUNDS } from "../../constants";
+import { AnimeModel, animeModelArrayAsAnime, IAnime } from "../../models/anime";
 
 const router = express.Router();
 
@@ -24,10 +25,39 @@ router.get(
     if (result) {
       checkPermissions(user, Permission.VIEW_ALL_USERS, result.id);
     } else {
+      checkPermissions(user, Permission.VIEW_ALL_USERS);
       throw new HttpError(404, "User not found.");
     }
 
     res.send(response(0, trimUser(user)));
+  })
+);
+
+router.get(
+  "/:username/votes",
+  t(async (req, res) => {
+    validate(req.params, ["username:string!"]);
+
+    const token = req.header("auth-token");
+    const user = await getUser(token);
+    const result = await User.findOne({ username: req.params.username });
+
+    if (result) {
+      checkPermissions(user, Permission.VIEW_ALL_USERS, result.id);
+    } else {
+      checkPermissions(user, Permission.VIEW_ALL_USERS);
+      throw new HttpError(404, "User not found.");
+    }
+
+    const requests = trimUser(user).votedFor.map((id) =>
+      AnimeModel.findOne({ kitsuId: id })
+    );
+    try {
+      const shows = (await Promise.all(requests)) as IAnime[];
+      res.send(response(0, animeModelArrayAsAnime(shows)));
+    } catch {
+      throw new HttpError(500, "Internal Server Error.");
+    }
   })
 );
 
