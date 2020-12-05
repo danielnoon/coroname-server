@@ -1,4 +1,4 @@
-import { HttpError } from "./http-error";
+import { HttpError } from "../http-error";
 
 export default function validate(body: any, validators: string[]) {
   for (const validator of validators) {

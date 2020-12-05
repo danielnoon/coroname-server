@@ -1,13 +1,13 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import validate from "../validate";
-import t from "../thunk";
-import { response } from "../models/response";
-import { AnimeModel } from "../models/anime";
-import { HASH_ROUNDS } from "../constants";
-import { HttpError } from "../http-error";
-import { generateToken, getUser } from "../auth-util";
-import { User, trimUsers, trimUser } from "../models/user";
+import validate from "../../helpers/validate";
+import t from "../../thunk";
+import { response } from "../../models/response";
+import { AnimeModel } from "../../models/anime";
+import { HASH_ROUNDS } from "../../constants";
+import { HttpError } from "../../http-error";
+import { generateToken, getUser } from "../../auth-util";
+import { User, trimUsers, trimUser } from "../../models/user";
 
 const router = express.Router();
 

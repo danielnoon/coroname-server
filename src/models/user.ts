@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { Permission } from "../Permission";
 
 export interface IUser extends Document {
   username: string;
@@ -8,6 +9,7 @@ export interface IUser extends Document {
   votedFor: number[];
   email: string;
   supervoteAvailable: boolean;
+  permissions: Permission[];
 }
 
 const UserSchema = new Schema({
@@ -18,6 +20,7 @@ const UserSchema = new Schema({
   votedFor: [Number],
   email: String,
   supervoteAvailable: Boolean,
+  permissions: [String],
 });
 
 export const User = mongoose.model<IUser>("User", UserSchema);
@@ -30,6 +33,7 @@ export function trimUser(user: IUser) {
     votedFor: user.votedFor,
     email: user.email,
     supervoteAvaliable: user.supervoteAvailable,
+    permissions: user.permissions,
   };
 }
 
