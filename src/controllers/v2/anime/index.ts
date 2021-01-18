@@ -40,8 +40,8 @@ router.get(
     );
 
     const { data, errors } = await kitsu.get("anime", {
-      filter: { text: query },
-    });
+      params: { filter: { text: query } },
+    } as any);
 
     if (errors) {
       throw new HttpError(errors[0].code, errors[0].title);

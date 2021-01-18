@@ -16,4 +16,5 @@ export enum Permission {
   CHANGE_CONTINUING_SERIES = "change cs",
   GRANT_PERMISSIONS = "grant permissions",
   VIEW_ADMIN = "view admin dashboard",
+  SEND_NOTIFICATIONS = "send notification",
 }
