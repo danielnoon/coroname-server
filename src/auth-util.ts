@@ -15,14 +15,11 @@ export function generateToken(user: IUser) {
     votedFor: user.votedFor,
     iat: Date.now(),
   };
-  console.log(SECRET);
   return jwt.sign(token, SECRET);
 }
 
 export async function decodeToken(t: string) {
-  console.log(t);
   try {
-    console.log(SECRET);
     const token = jwt.verify(t, SECRET) as Token;
     return await User.findById(token.sub);
   } catch (err) {
