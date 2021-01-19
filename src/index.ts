@@ -5,6 +5,8 @@ import cors from "cors";
 import bp from "body-parser";
 import { runMigrations } from "./migrations";
 import { error } from "./models/error";
+import { initializeFirebase } from "./notifications";
+require("dotenv").config();
 
 const app = express();
 
@@ -35,6 +37,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 (async () => {
+  await initializeFirebase();
   await runMigrations();
   app.listen(process.env.PORT || 3000, () => console.log("Listening!"));
 })();
