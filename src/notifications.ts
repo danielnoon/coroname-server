@@ -1,6 +1,10 @@
 import * as admin from "firebase-admin";
+import { addGCPSettings } from "./add-gcp-settings";
 
-admin.initializeApp();
+export async function initializeFirebase() {
+  await addGCPSettings();
+  admin.initializeApp();
+}
 
 export function addToken(token: string, topic: string) {
   admin.messaging().subscribeToTopic(token, topic);

@@ -4,6 +4,7 @@ import { Token } from "./models/token";
 import { HttpError } from "./http-error";
 
 const TEST_SECRET = "g4bno9ui2";
+const SECRET = process.env.JWT_SECRET || TEST_SECRET;
 
 export function generateToken(user: IUser) {
   const token: Token = {
@@ -14,13 +15,15 @@ export function generateToken(user: IUser) {
     votedFor: user.votedFor,
     iat: Date.now(),
   };
-
-  return jwt.sign(token, process.env.JWT_SECRET || TEST_SECRET);
+  console.log(SECRET);
+  return jwt.sign(token, SECRET);
 }
 
 export async function decodeToken(t: string) {
+  console.log(t);
   try {
-    const token = jwt.verify(t, process.env.JWT_SECRET || TEST_SECRET) as Token;
+    console.log(SECRET);
+    const token = jwt.verify(t, SECRET) as Token;
     return await User.findById(token.sub);
   } catch (err) {
     throw new HttpError(401, "Invalid token.");
