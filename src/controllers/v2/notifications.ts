@@ -26,7 +26,7 @@ router.post(
       throw new HttpError(500, err);
     }
 
-    const consumer = NConsumer.findOne({
+    const consumer = await NConsumer.findOne({
       token: req.body.token,
     });
 
@@ -34,7 +34,45 @@ router.post(
       await new NConsumer({
         token: req.body.token,
         user: user.id,
+        subscribed: true,
       }).save();
+    } else {
+      consumer.subscribed = true;
+      consumer.save();
+    }
+
+    res.send(response(0, "success"));
+  })
+);
+
+router.post(
+  "/:channel/subscriptions",
+  t(async (req, res) => {
+    validate(req.params, ["channel:string!"]);
+    validate(req.body, ["token:string!"]);
+
+    const token = req.header("auth-token");
+    const user = await getUser(token);
+
+    try {
+      addToken(req.body.token, req.params.channel);
+    } catch (err) {
+      throw new HttpError(500, err);
+    }
+
+    const consumer = await NConsumer.findOne({
+      token: req.body.token,
+    });
+
+    if (!consumer) {
+      await new NConsumer({
+        token: req.body.token,
+        user: user.id,
+        subscribed: true,
+      }).save();
+    } else {
+      consumer.subscribed = true;
+      consumer.save();
     }
 
     res.send(response(0, "success"));
