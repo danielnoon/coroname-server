@@ -41,7 +41,7 @@ router.get(
 
     console.log(query);
 
-    const { data, errors } = await kitsu.fetch("anime", {
+    const { data, errors } = await kitsu.get("anime", {
       filter: {
         text: query,
       },
