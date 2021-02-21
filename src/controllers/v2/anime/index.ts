@@ -39,11 +39,9 @@ router.get(
       await AnimeModel.find({ $text: { $search: query } })
     );
 
-    console.log(query);
-
     const { data, errors } = await kitsu.get("anime", {
-      filter: {
-        text: query,
+      params: {
+        filter: { text: query },
       },
     } as any);
 
