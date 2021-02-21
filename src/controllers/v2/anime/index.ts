@@ -39,8 +39,12 @@ router.get(
       await AnimeModel.find({ $text: { $search: query } })
     );
 
-    const { data, errors } = await kitsu.get("anime", {
-      params: { filter: { text: query } },
+    console.log(query);
+
+    const { data, errors } = await kitsu.fetch("anime", {
+      filter: {
+        text: query,
+      },
     } as any);
 
     if (errors) {
@@ -48,11 +52,13 @@ router.get(
     }
 
     const kitsuResults = await kitsuArrayToCoroname(data);
-    const filteredKitsu = kitsuResults.filter(
-      (a) => !dbResults.find((b) => a.kitsuId == b.kitsuId)
-    );
+    // console.log(kitsuResults)
+    const filteredKitsu = kitsuResults.map((k) => {
+      const d = dbResults.find((r) => r.kitsuId === k.kitsuId);
+      return d ? d : k;
+    });
 
-    res.send(response(0, [...dbResults, ...filteredKitsu]));
+    res.send(response(0, kitsuResults));
   })
 );
 
